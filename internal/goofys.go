@@ -435,6 +435,70 @@ func (fs *Goofys) GetInodeAttributes(
 	return
 }
 
+func (fs *Goofys) GetXattr(ctx context.Context,
+	op *fuseops.GetXattrOp) (err error) {
+	fs.mu.Lock()
+	inode := fs.getInodeOrDie(op.Inode)
+	fs.mu.Unlock()
+
+	fuseLog.Infof("GetXattr %v", *inode.Name)
+
+	if *inode.Name == "file2" {
+		if len(op.Dst) == 0 {
+			op.BytesRead = len("world")
+			return syscall.ERANGE
+		} else {
+			copy(op.Dst, "world")
+			op.BytesRead = len("world")
+		}
+		return
+	}
+
+	// we are supposed to return ENOATTR but golang doesn't define this, and
+	// on linux it's the same as ENODATA
+	return syscall.ENODATA
+}
+
+func (fs *Goofys) ListXattr(ctx context.Context,
+	op *fuseops.ListXattrOp) (err error) {
+	fs.mu.Lock()
+	inode := fs.getInodeOrDie(op.Inode)
+	fs.mu.Unlock()
+
+	fuseLog.Infof("ListXattr %v", *inode.Name)
+
+	if *inode.Name == "file2" {
+		if len(op.Dst) == 0 {
+			op.BytesRead = len("hello") + 1
+			return syscall.ERANGE
+		} else {
+			copy(op.Dst, "hello")
+			op.BytesRead = len("hello") + 1
+		}
+	}
+	return
+}
+
+func (fs *Goofys) RemoveXattr(ctx context.Context,
+	op *fuseops.RemoveXattrOp) (err error) {
+	fs.mu.Lock()
+	inode := fs.getInodeOrDie(op.Inode)
+	fs.mu.Unlock()
+
+	fuseLog.Infof("RemoveXattr %v %v", *inode.Name, op.Name)
+	return
+}
+
+func (fs *Goofys) SetXattr(ctx context.Context,
+	op *fuseops.SetXattrOp) (err error) {
+	fs.mu.Lock()
+	inode := fs.getInodeOrDie(op.Inode)
+	fs.mu.Unlock()
+
+	fuseLog.Infof("SetXattr %v %v %v %x", *inode.Name, op.Name, op.Data, op.Flags)
+	return
+}
+
 func mapAwsError(err error) error {
 	if err == nil {
 		return nil

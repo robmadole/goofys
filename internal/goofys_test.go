@@ -41,6 +41,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 
+	"github.com/ivaxer/go-xattr"
+
 	"github.com/jacobsa/fuse"
 	"github.com/jacobsa/fuse/fuseops"
 	"github.com/jacobsa/fuse/fuseutil"
@@ -1256,5 +1258,34 @@ func (s *GoofysTest) TestWriteSyncWrite(t *C) {
 	t.Assert(n, Equals, 6)
 
 	err = f.Close()
+	t.Assert(err, IsNil)
+}
+
+func (s *GoofysTest) TestXAttr(t *C) {
+	fuseLog.Level = logrus.DebugLevel
+	log.Level = logrus.DebugLevel
+	mountPoint := "/tmp/mnt" + s.fs.bucket
+
+	err := os.MkdirAll(mountPoint, 0700)
+	t.Assert(err, IsNil)
+
+	s.mount(t, mountPoint)
+	defer s.umount(t, mountPoint)
+
+	names, err := xattr.List(mountPoint + "/file1")
+	t.Assert(err, IsNil)
+	t.Assert(names, DeepEquals, []string{})
+
+	_, err = xattr.Get(mountPoint+"/file1", "user.foobar")
+	t.Assert(xattr.IsNotExist(err), Equals, true)
+
+	value, err := xattr.Get(mountPoint+"/file2", "hello")
+	t.Assert(err, IsNil)
+	t.Assert(value, DeepEquals, []byte("world"))
+
+	err = xattr.Removexattr(mountPoint+"/file2", "hello")
+	t.Assert(err, IsNil)
+
+	err = xattr.Setxattr(mountPoint+"/file2", "hello", []byte("world"), 0x1)
 	t.Assert(err, IsNil)
 }
